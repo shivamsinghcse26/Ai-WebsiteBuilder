@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
-import { use } from "react";
+
     
 const userSchema = new mongoose.Schema({
-    username:{
+    name:{
         type:String,
         required:[true,"Username is required"],
         trim:true,
