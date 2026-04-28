@@ -13,21 +13,28 @@ export const generateResponse = async (prompt) => {
             messages: [
                 {
                     role: 'system',
-                    content: "You must return only valid raw JSON",
+                    content: `CRITICAL RULES:
+1. RETURN ONLY RAW JSON - NO TEXT BEFORE OR AFTER
+2. JSON MUST HAVE BOTH 'message' AND 'code' FIELDS
+3. DO NOT EXPLAIN, JUSTIFY, OR ADD COMMENTARY
+4. DO NOT USE MARKDOWN FORMATTING
+5. IF YOU CANNOT FOLLOW THIS FORMAT, DO NOT RESPOND`,
                 },
                 {
                     role: 'user',
                     content: prompt,
                 },
             ],
-            temperature:0.2
+            temperature: 0.1,
+            max_tokens: 8000
         }),
     });
     if(!res.ok){
         const err = await res.text()
-        throw new Error("OpenRouter err"+ err)
+        throw new Error("OpenRouter error: "+ err)
     }
 
     const data = await res.json()
-    return data.choices[0].message.content
+    const content = data.choices[0].message.content
+    return content
 }
