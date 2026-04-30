@@ -154,8 +154,8 @@ ABSOLUTE RULES
 export const generateWebsite = async (req, res) => {
   try {
     const { prompt } = req.body
-    if (!prompt) {
-      return res.status(400).json({ message: "Prompt is required" })
+    if (!prompt || prompt.trim().length === 0) {
+      return res.status(400).json({ message: "Prompt is required and cannot be empty" })
     }
     const user = await User.findById(req.user._id)
     if (!user) {
@@ -163,9 +163,10 @@ export const generateWebsite = async (req, res) => {
     }
 
     if (user.credits < 10) {
-      return res.status(400).json({ message: "You have not enough credits to generate a website" })
+      return res.status(400).json({ message: "You have not enough credits to generate a website. You need at least 10 credits." })
     }
 
+    console.log('Starting website generation for prompt:', prompt.substring(0, 100))
     const finalPrompt = masterPrompt.replace("{USER_PROMPT}", prompt)
     let raw = ""
     let parsed = null
@@ -174,12 +175,15 @@ export const generateWebsite = async (req, res) => {
     while (!parsed && attempts < 3) {
       attempts++
       try {
+        console.log(`Generation attempt ${attempts}...`)
         raw = await generateResponse(finalPrompt)
+        console.log(`Attempt ${attempts} response length:`, raw.length)
         parsed = await extractJson(raw)
         
         if (!parsed) {
           console.log(`Attempt ${attempts}: Failed to parse JSON response`)
           if (attempts === 1) {
+            console.log('Retrying with stricter format requirement...')
             const retryPrompt = finalPrompt + "\n\nCRITICAL: Return ONLY this JSON format with no extra text:\n{\"message\": \"one sentence\", \"code\": \"<full html code>\"}"
             raw = await generateResponse(retryPrompt)
             parsed = await extractJson(raw)
@@ -191,9 +195,15 @@ export const generateWebsite = async (req, res) => {
     }
     
     if (!parsed || !parsed.code) {
-      console.error('Raw response:', raw)
-      return res.status(400).json({ message: "AI failed to generate valid website code. Please try again with a clearer description." })
+      console.error('Final parsed response:', parsed)
+      console.error('Raw response:', raw.substring(0, 1000))
+      return res.status(400).json({ 
+        message: "AI failed to generate valid website code. Please try again with a clearer description. The AI service may be temporarily unavailable." 
+      })
     }
+
+    console.log('Website code generated successfully, length:', parsed.code.length)
+    
     const website = await Website.create({
       user: user._id,
       title: prompt.slice(0, 60),
@@ -205,12 +215,18 @@ export const generateWebsite = async (req, res) => {
     })
     user.credits = user.credits - 10
     await user.save()
+
+    console.log('Website saved with ID:', website._id)
     return res.status(201).json({
       websiteId: website._id,
-      remainingCredits: user.credits
+      code: parsed.code, 
+      remainingCredits: user.credits,
+      message: parsed.message,
+      
     })
   } catch (error) {
-    return res.status(500).json({ message: error.message })
+    console.error('Generation error:', error)
+    return res.status(500).json({ message: "Server error: " + error.message })
   }
 }
 

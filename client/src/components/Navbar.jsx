@@ -50,7 +50,7 @@ const Navbar = () => {
             <img src="/ai2.png" className="w-7" />
 
             <span className="font-semibold text-lg bg-linear-to-r from-purple-400 to-indigo-500 bg-clip-text text-transparent">
-              Dora AI
+              WebGen AI
             </span>
           </div>
 

@@ -2,11 +2,17 @@ const openRouterUrl = 'https://openrouter.ai/api/v1/chat/completions'
 const model = 'deepseek/deepseek-chat'
 
 export const generateResponse = async (prompt) => {
+    if (!process.env.OPENROUTER_API_KEY) {
+        throw new Error("OPENROUTER_API_KEY is not set in environment variables")
+    }
+
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
             Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
             'Content-Type': 'application/json',
+            'HTTP-Referer': 'http://localhost:5000',
+            'X-Title': 'AI Website Builder'
         },
         body: JSON.stringify({
             model: 'deepseek/deepseek-chat',
@@ -26,7 +32,7 @@ export const generateResponse = async (prompt) => {
                 },
             ],
             temperature: 0.1,
-            max_tokens: 8000
+            max_tokens: 16000
         }),
     });
     if(!res.ok){

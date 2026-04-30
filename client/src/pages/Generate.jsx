@@ -29,8 +29,13 @@ const Generate = () => {
     const handleGenerateWebsite = async () => {
 
         try {
+            if (!prompt.trim()) {
+                setError("Please describe your website first")
+                return
+            }
 
             setLoading(true)
+            setError("")
 
             const res = await axios.post(
                 `${import.meta.env.VITE_SERVER_URL}/api/website/generate`,
@@ -44,8 +49,10 @@ const Generate = () => {
             navigate(`/editor/${res.data.websiteId}`)
 
         } catch (error) {
-
-            setError(error.response?.data?.message || "Something went wrong")
+            console.error("Generation error:", error)
+            const errorMessage = error.response?.data?.message || error.message || "Something went wrong. Please try again."
+            setError(errorMessage)
+            setProgress(0)
 
         } finally {
 
@@ -125,7 +132,7 @@ const Generate = () => {
                             <ArrowLeft size={16} />
                         </button>
 
-                        <h1 className="text-lg font-semibold">Dora AI</h1>
+                        <h1 className="text-lg font-semibold">WebGen AI</h1>
 
                     </div>
 
@@ -151,7 +158,7 @@ const Generate = () => {
                     </h1>
 
                     <p className='text-zinc-400 max-w-2xl mx-auto'>
-                        This process may take several minutes. Dora AI focuses on quality not shortcuts
+                        This process may take several minutes. WebGen AI focuses on quality not shortcuts
                     </p>
 
                 </motion.div>

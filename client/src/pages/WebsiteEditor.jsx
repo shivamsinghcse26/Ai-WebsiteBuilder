@@ -45,14 +45,22 @@ const WebsiteEditor = () => {
     }, [updateLoading])
 
     const handleUpdate = async () => {
-        setMessages((m) => [...m, { role: "user", content: prompt }])
+        if (!prompt.trim()) {
+            return
+        }
+        const userPrompt=prompt;
+        setPrompt("");
+        setMessages((m) => [...m, { role: "user", content: userPrompt }])
         setUpdateLoading(true)
         try {
             const result = await axios.post(`${import.meta.env.VITE_SERVER_URL}/api/website/update/${id}`, { prompt }, { withCredentials: true })
             setMessages((m) => [...m, { role: "ai", content: result.data.message }])
-            setCode(result.data.code)
+            setCode(result.data.code || "")
+            setPrompt("")
         } catch (error) {
-            console.log(error)
+            console.error("Update error:", error)
+            const errorMessage = error.response?.data?.message || error.message || "Failed to update website"
+            setMessages((m) => [...m, { role: "ai", content: `Error: ${errorMessage}` }])
         } finally {
             setUpdateLoading(false)
         }
@@ -63,23 +71,28 @@ const WebsiteEditor = () => {
             try {
                 const result = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/website/getbyid/${id}`, { withCredentials: true })
                 setWebsite(result.data)
-                setCode(result.data.latestCode)
-                setMessages(result.data.conversation)
+                setCode(result.data.latestCode || "")
+                setMessages(result.data.conversation || [])
             } catch (error) {
-                setError(error.response.data.message)
-                console.log(error)
+                console.error("Error fetching website:", error)
+                const errorMessage = error.response?.data?.message || error.message || "Failed to load website"
+                setError(errorMessage)
             }
         }
         handleGetWebsite()
     }, [id])
 
     useEffect(() => {
-        if (!iframeRef.current || !code) return;
-        const blob = new Blob([code], { type: "text/html" })
-        const url = URL.createObjectURL(blob)
-        iframeRef.current.src = url
-        return () => URL.revokeObjectURL(url)
-    }, [code])
+    if (!iframeRef.current || !code) return;
+
+    const iframe = iframeRef.current;
+
+    iframe.srcdoc = "";   
+    setTimeout(() => {
+        iframe.srcdoc = code;  
+    }, 50);
+
+}, [code]);
 
     if (error) {
         return (
@@ -142,7 +155,17 @@ const WebsiteEditor = () => {
                         <button onClick={() => setShowFullPreview(true)} className='p-2'><Monitor size={18} /></button>
                     </div>
                 </div>
-                <iframe ref={iframeRef} className='flex-1 w-full bg-white' sandbox='allow-scripts allow-same-origin allow-forms'/>
+                {!code ? (
+                    <div className='flex-1 flex items-center justify-center bg-gray-100'>
+                        <div className='text-center'>
+                            <div className='animate-pulse text-gray-400 mb-4'>
+                                <p>Loading website...</p>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <iframe ref={iframeRef} className='flex-1 w-full bg-white' sandbox='allow-scripts allow-same-origin allow-forms allow-popups'/>
+                )}
             </div>
 
             {/* mobile chat preview */}
@@ -207,7 +230,7 @@ const WebsiteEditor = () => {
             <AnimatePresence>
                 {showFullPreview && (
                     <motion.div className='fixed inset-0 bg-black z-9999'>
-                        <iframe className='w-full h-full bg-white' srcDoc={code} sandbox='allow-scripts allow-same-origin allow-forms'></iframe>
+                        <iframe className='w-full h-full bg-white' srcDoc={code} sandbox='allow-scripts allow-forms'></iframe>
                         <button onClick={() => setShowFullPreview(false)} className='absolute top-4 right-4 p-2 bg-black/70 rounded-lg'><X /></button>
                     </motion.div>
                 )}
